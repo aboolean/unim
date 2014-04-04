@@ -7,8 +7,10 @@ from django.contrib import admin
 admin.autodiscover()
 
 router = routers.DefaultRouter()
+
+# SET API URLS HERE
 router.register(r'users', views.UserViewSet)
-router.register(r'groups', views.GroupViewSet)
+router.register(r'testit', views.TestItViewSet)
 
 urlpatterns = patterns('',
     # Examples:

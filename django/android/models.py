@@ -9,6 +9,9 @@ from datetime import datetime
 # FIELDS:
 # https://docs.djangoproject.com/en/dev/ref/models/fields/#field-types
 
+# ForeignKey goes in *child*/many class (many-to-one relation)
+# parent = ForeignKey(Parent, relative_key="children")
+
 class Student(models.Model):
 
     """
@@ -18,7 +21,6 @@ class Student(models.Model):
     # User includes: Name, email, passwd, username, (verification?)
 
     user = models.OneToOneField(User)
-    # TODO: permissions
 
     # Profile Fields
 
@@ -46,14 +48,15 @@ class Student(models.Model):
 
     # Matchmaking
 
-    activeUntil = models.DateTimeField(default=datetime.now(),blank=True,required=False)  # waiting until
+    activeUntil = models.DateTimeField(default=datetime.now(),blank=True)  # waiting until
     isLooking = models.BooleanField(default=False)  # currently searching/waiting
     pendingMatch = models.BooleanField(default=False)  # pending/completed match
 
     # Meetup instance
-    currentMeetup = models.ForeignKey('Meetup', null=True)
-    currentMemberSelf = models.ForeignKey('MeetupMember', null=True)
-    currentMemberOther = models.ForeignKey('MeetupMember', null=True)
+    currentMembership = models.OneToOneField('MeetupMember', null=True)
+    # currentMembership.meetup --> returns current Meetup instance
+    # currentMembership.meetup.members.exclude(student=self) --> returns other student
+    # currentMembership.student --> always equals self (preserved)
 
     # IMAGE FIELD
 
@@ -61,19 +64,52 @@ class Student(models.Model):
     #     return '%s' % self.# whatever you want this to be, toString
 
 class Meetup(models.Model):
-
+    """
+    Represents a single meeting between two individuals.
+    """
     # Student members
-    userA = models.ForeignKey('MeetupMember')
-    userB = models.ForeignKey('MeetupMember')
+    # meetup.members.all() for both members
 
     # Timestamps
     matchTime = models.DateTimeField(auto_now_add=True)
-    meetTime = models.DateTimeField(blank=True,null=True,required=False)
+    meetTime = models.DateTimeField(blank=True,null=True)
+
+    # Locations
+    location = models.ForeignKey('MeetingLocation', related_name='meetups')
 
     # def __unicode__(self):
-    #     return '%s' % 'Meeting at ' + str(self.contactTime)
+    #     return '%s' % self.# whatever you want this to be, toString
 
 class MeetupMember(models.Model):
-    student = models.ForeignKey('Student')
+    """
+    Details related to a single member of a meetup.
+    """
+    # Lookup all meetups for a user:
+    # Student.object.filter(user = u).memberships.meetups
+    studentMember = models.ForeignKey('Student', related_name='memberships')
+    meetup = models.ForeignKey('Meetup', related_name='members')
+
+    # self.student --> returns current student (probably unused backward ref.)
+
+    # Meetup Tacking
     accepted = models.NullBooleanField(default=None)
-    responseTime = meetTime = models.DateTimeField(blank=True,null=True,required=False)
+    responseTime = models.DateTimeField(blank=True,null=True)
+    receivedRating = models.NullBooleanField(default=None)
+
+    # def __unicode__(self):
+    #     return '%s' % self.# whatever you want this to be, toString
+
+class MeetingLocation(models.Model):
+    """
+    Represents a single valid meeting location.
+    """
+    # Coordinates
+    locLat = models.FloatField()  # range [-180,180]
+    locLong = models.FloatField()
+
+class TestIt(models.Model):
+    date = models.DateTimeField(blank=True,null=True)
+    boolean = models.NullBooleanField(default=None)
+    floatNum = models.FloatField(default=0)
+    intNum = models.IntegerField(default=0)
+    strField = models.CharField(max_length=160, blank=True)

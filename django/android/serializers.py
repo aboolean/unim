@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User
+from android.models import *
 from rest_framework import serializers
 
 
@@ -12,9 +13,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'username', 'email', 'groups')
 
 
-class GroupSerializer(serializers.HyperlinkedModelSerializer):
-
+class TestItSerializer(serializers.ModelSerializer):
     class Meta:
-
-        model = Group
-        fields = ('url', 'name')
+        model = TestIt
+        fields = ('date','boolean','floatNum','intNum','strField')

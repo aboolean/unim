@@ -1,8 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User
 from rest_framework import viewsets
-from android.serializers import UserSerializer, GroupSerializer
+from android.serializers import *
+from android.models import *
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -15,11 +16,11 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
 
-class GroupViewSet(viewsets.ModelViewSet):
+class TestItViewSet(viewsets.ModelViewSet):
 
     """
     API endpoint that allows groups to be viewed or edited.
     """
 
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
+    queryset = TestIt.objects.all()
+    serializer_class = TestItSerializer
