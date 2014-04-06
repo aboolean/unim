@@ -26,8 +26,8 @@ class Student(models.Model):
     iAm = models.CharField(max_length=400, blank=True)
     iLike = models.CharField(max_length=400, blank=True)
     iWant = models.CharField(max_length=400, blank=True)
-    dorm = models.CharField(max_length=30, blank=True)
-    major = models.CharField(max_length=30, blank=True)
+    # dorm = models.CharField(max_length=30, blank=True) # uncomment after sync
+    # major = models.CharField(max_length=30, blank=True)
 
     # Rating System
     hasRatedRecent = models.BooleanField(default=True)  # most recent rating
