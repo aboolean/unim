@@ -6,68 +6,64 @@ from android import models
 from rest_framework import serializers
 
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+# class UserSerializer(serializers.HyperlinkedModelSerializer):
 
-    memberships = serializers.PrimaryKeyRelatedField(many=True)
+#     memberships = serializers.PrimaryKeyRelatedField(many=True)
 
-    class Meta:
+#     class Meta:
 
-        model = User
-        fields = (
-            'url',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'student',
-            )
+#         model = User
+#         fields = (
+#             'url',
+#             'username',
+#             'email',
+#             'first_name',
+#             'last_name',
+#             'student',
+#             )
 
+# class StudentSerializer(serializers.HyperlinkedModelSerializer):
 
-class StudentSerializer(serializers.HyperlinkedModelSerializer):
+#     class Meta:
 
-    class Meta:
+#         model = models.Student
+#         fields = (
+#             'url',
+#             'owner',
+#             'isProfileComplete',
+#             'iAm',
+#             'iLike',
+#             'iWant',
+#             'locLat',
+#             'locLong',
+#             'activeUntil',
+#             'isLooking',
+#             'pendingMatch',
+#             'currentMembership',
+#             )
 
-        model = models.Student
-        fields = (
-            'url',
-            'owner',
-            'isProfileComplete',
-            'iAm',
-            'iLike',
-            'iWant',
-            'locLat',
-            'locLong',
-            'activeUntil',
-            'isLooking',
-            'pendingMatch',
-            'currentMembership',
-            )
+# class MeetupSerializer(serializers.HyperlinkedModelSerializer):
 
+#     members = serializers.PrimaryKeyRelatedField(many=True)
 
-class MeetupSerializer(serializers.HyperlinkedModelSerializer):
+#     class Meta:
 
-    members = serializers.PrimaryKeyRelatedField(many=True)
+#         model = models.Meetup
+#         fields = ('url', 'members', 'matchTime', 'meetTime', 'location')
 
-    class Meta:
+# class MemberSerializer(serializers.HyperlinkedModelSerializer):
 
-        model = models.Meetup
-        fields = ('url', 'members', 'matchTime', 'meetTime', 'location')
+#     class Meta:
 
-
-class MemberSerializer(serializers.HyperlinkedModelSerializer):
-
-    class Meta:
-
-        model = models.Member
-        fields = (
-            'url',
-            'owner',
-            'meetup',
-            'accepted',
-            'responseTime',
-            'receivedRating',
-            )
-
+#         model = models.Member
+#         fields = (
+#             'url',
+#             'owner',
+#             'meetup',
+#             'accepted',
+#             'responseTime',
+#             'receivedRating',
+#             )
 
 class LocationSerializer(serializers.ModelSerializer):
 
@@ -75,3 +71,40 @@ class LocationSerializer(serializers.ModelSerializer):
 
         model = models.Location
         fields = ('locLat', 'locLong')
+
+
+##########################################
+
+# class UserSerializer(serializers.ModelSerializer):
+
+#     memberships = serializers.PrimaryKeyRelatedField(many=True)
+
+#     class Meta:
+
+#         model = User
+#         fields = (
+#             'username',
+#             'email',
+#             'first_name',
+#             'last_name',
+#             'student',
+#             )
+
+class ProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+
+        model = models.Student
+        fields = ('iAm', 'iLike', 'iWant')
+
+
+            # 'dorm', # include fields after syncdb
+            # 'major',
+
+class StateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+
+        model = models.Student
+        fields = ('isProfileComplete', 'hasRatedRecent', 'activeUntil',
+                  'isLooking', 'pendingMatch')
