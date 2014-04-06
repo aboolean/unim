@@ -31,12 +31,16 @@ class StudentSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'url',
             'owner',
-            'currentMembership',
+            'isProfileComplete',
+            'iAm',
+            'iLike',
+            'iWant',
             'locLat',
             'locLong',
             'activeUntil',
             'isLooking',
             'pendingMatch',
+            'currentMembership',
             )
 
 

@@ -23,15 +23,9 @@ class Student(models.Model):
 
     # Profile Fields
     isProfileComplete = models.BooleanField(default=False)
-    iAm1 = models.CharField(max_length=160, blank=True)
-    iAm2 = models.CharField(max_length=160, blank=True)
-    iAm3 = models.CharField(max_length=160, blank=True)
-    iLike1 = models.CharField(max_length=160, blank=True)
-    iLike2 = models.CharField(max_length=160, blank=True)
-    iLike3 = models.CharField(max_length=160, blank=True)
-    iWant1 = models.CharField(max_length=160, blank=True)
-    iWant2 = models.CharField(max_length=160, blank=True)
-    iWant3 = models.CharField(max_length=160, blank=True)
+    iAm = models.CharField(max_length=400, blank=True)
+    iLike = models.CharField(max_length=400, blank=True)
+    iWant = models.CharField(max_length=400, blank=True)
 
     # Rating System
     hasRatedRecent = models.BooleanField(default=True)  # most recent rating
