@@ -4,6 +4,5 @@ from android.models import *
 # Register models here.
 admin.site.register(Student)
 admin.site.register(Meetup)
-admin.site.register(MeetupMember)
-admin.site.register(MeetingLocation)
-admin.site.register(TestIt)
+admin.site.register(Member)
+admin.site.register(Location)

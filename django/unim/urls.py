@@ -10,7 +10,11 @@ router = routers.DefaultRouter()
 
 # SET API URLS HERE
 router.register(r'users', views.UserViewSet)
-router.register(r'testit', views.TestItViewSet)
+router.register(r'students', views.StudentViewSet)
+router.register(r'meetups', views.MeetupViewSet)
+router.register(r'members', views.MemberViewSet)
+router.register(r'locations', views.LocationViewSet)
+
 
 urlpatterns = patterns('',
     # Examples:

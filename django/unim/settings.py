@@ -7,7 +7,6 @@ TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
     ('aandre', 'aandre@mit.edu'),
-    ('bevacqua', 'bevacqua@mit.edu'),
 )
 
 MANAGERS = ADMINS
@@ -173,8 +172,10 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         # 'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
-        # 'rest_framework.permissions.IsAdminUser',
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.IsAdminUser',
+        # 'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        # 'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.AllowAny',
 
     ]
 }

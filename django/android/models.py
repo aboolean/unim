@@ -19,11 +19,9 @@ class Student(models.Model):
     """
 
     # User includes: Name, email, passwd, username, (verification?)
-
-    user = models.OneToOneField(User)
+    owner = models.OneToOneField(User) # user.student = self
 
     # Profile Fields
-
     isProfileComplete = models.BooleanField(default=False)
     iAm1 = models.CharField(max_length=160, blank=True)
     iAm2 = models.CharField(max_length=160, blank=True)
@@ -36,57 +34,57 @@ class Student(models.Model):
     iWant3 = models.CharField(max_length=160, blank=True)
 
     # Rating System
-
     hasRatedRecent = models.BooleanField(default=True)  # most recent rating
     reliableMatch = models.FloatField(default=0)  # upvotes
     numReviews = models.IntegerField(default=0)  # total reviews (num meetings)
 
-    # Location
-
+    # Location (current)
     locLat = models.FloatField(default=999)  # range [-180,180]
-    locLong = models.FloatField(default=999)
+    locLong = models.FloatField(default=999) # 999 is null flag
 
     # Matchmaking
-
-    activeUntil = models.DateTimeField(default=datetime.now(),blank=True)  # waiting until
+    activeUntil = models.DateTimeField(default=datetime.now(),blank=True,null=True)  # waiting until
     isLooking = models.BooleanField(default=False)  # currently searching/waiting
     pendingMatch = models.BooleanField(default=False)  # pending/completed match
 
     # Meetup instance
-    currentMembership = models.OneToOneField('MeetupMember', null=True)
+    currentMembership = models.OneToOneField('Member', null=True)
     # currentMembership.meetup --> returns current Meetup instance
     # currentMembership.meetup.members.exclude(student=self) --> returns other student
     # currentMembership.student --> always equals self (preserved)
 
     # IMAGE FIELD
 
-    # def __unicode__(self):
-    #     return '%s' % self.# whatever you want this to be, toString
+    def __unicode__(self):
+        return str(self.owner.username)
 
 class Meetup(models.Model):
     """
     Represents a single meeting between two individuals.
     """
     # Student members
-    # meetup.members.all() for both members
+    # self.members.all() for both members
 
     # Timestamps
     matchTime = models.DateTimeField(auto_now_add=True)
     meetTime = models.DateTimeField(blank=True,null=True)
 
     # Locations
-    location = models.ForeignKey('MeetingLocation', related_name='meetups')
+    location = models.ForeignKey('Location', related_name='meetups')
 
-    # def __unicode__(self):
-    #     return '%s' % self.# whatever you want this to be, toString
+    class Meta:
+        pass
 
-class MeetupMember(models.Model):
+    def __unicode__(self):
+        return ";".join([e.owner.username for e in self.members.all()])
+
+class Member(models.Model):
     """
     Details related to a single member of a meetup.
     """
     # Lookup all meetups for a user:
     # Student.object.filter(user = u).memberships.meetups
-    studentMember = models.ForeignKey('Student', related_name='memberships')
+    owner = models.ForeignKey(User, related_name='memberships')
     meetup = models.ForeignKey('Meetup', related_name='members')
 
     # self.student --> returns current student (probably unused backward ref.)
@@ -96,10 +94,10 @@ class MeetupMember(models.Model):
     responseTime = models.DateTimeField(blank=True,null=True)
     receivedRating = models.NullBooleanField(default=None)
 
-    # def __unicode__(self):
-    #     return '%s' % self.# whatever you want this to be, toString
+    def __unicode__(self):
+        return "%s" % self.owner.username
 
-class MeetingLocation(models.Model):
+class Location(models.Model):
     """
     Represents a single valid meeting location.
     """
@@ -107,9 +105,6 @@ class MeetingLocation(models.Model):
     locLat = models.FloatField()  # range [-180,180]
     locLong = models.FloatField()
 
-class TestIt(models.Model):
-    date = models.DateTimeField(blank=True,null=True)
-    boolean = models.NullBooleanField(default=None)
-    floatNum = models.FloatField(default=0)
-    intNum = models.IntegerField(default=0)
-    strField = models.CharField(max_length=160, blank=True)
+    def __unicode__(self):
+        return "%s, %s" % (self.locLat, self.locLong)
+
