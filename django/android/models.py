@@ -37,6 +37,8 @@ class Student(models.Model):
     dorm = models.CharField(max_length=30, blank=True)
     major = models.CharField(max_length=30, blank=True)
 
+    photo = models.CharField(max_length=50, blank=True)
+
     # Rating System
     pendingRating = models.OneToOneField('Member', related_name='awaiting_raing',null=True, blank=True) # most recent encounter
     reliableMatch = models.FloatField(default=0)  # upvotes
@@ -89,13 +91,14 @@ class Member(models.Model):
     # Student.object.filter(user = u).memberships.meetups
     owner = models.ForeignKey(User, related_name='memberships')
     meetup = models.ForeignKey('Meetup', related_name='members')
+    partner = models.OneToOneField('Member', null=True, blank=True)
 
     # self.student --> returns current student (probably unused backward ref.)
 
     # Meetup Tacking
     accepted = models.NullBooleanField(default=None)
     responseTime = models.DateTimeField(blank=True,null=True)
-    receivedRating = models.NullBooleanField(default=None)
+    receivedRating = models.IntegerField(default=None)
 
     def __unicode__(self):
         return "%s" % self.owner.username
@@ -107,6 +110,10 @@ class Location(models.Model):
     # Coordinates
     locLat = models.FloatField()  # range [-180,180]
     locLong = models.FloatField()
+
+    # Details
+    name = models.CharField(max_length=30)
+    description = models.CharField(max_length=400)
 
     def __unicode__(self):
         return "%s, %s" % (self.locLat, self.locLong)
