@@ -72,39 +72,17 @@ class LocationSerializer(serializers.ModelSerializer):
         model = models.Location
         fields = ('locLat', 'locLong')
 
-
-##########################################
-
-# class UserSerializer(serializers.ModelSerializer):
-
-#     memberships = serializers.PrimaryKeyRelatedField(many=True)
-
-#     class Meta:
-
-#         model = User
-#         fields = (
-#             'username',
-#             'email',
-#             'first_name',
-#             'last_name',
-#             'student',
-#             )
-
 class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
 
         model = models.Student
-        fields = ('iAm', 'iLike', 'iWant')
+        fields = ('iAm', 'iLike', 'iWant', 'dorm', 'major')
 
-
-            # 'dorm', # include fields after syncdb
-            # 'major',
 
 class StateSerializer(serializers.ModelSerializer):
 
     class Meta:
 
         model = models.Student
-        fields = ('isProfileComplete', 'hasRatedRecent', 'activeUntil',
-                  'isLooking', 'pendingMatch')
+        fields = ('isProfileComplete', 'activeUntil', 'isLooking')

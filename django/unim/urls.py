@@ -8,13 +8,8 @@ admin.autodiscover()
 
 router = routers.DefaultRouter()
 
-# SET API URLS HERE
-# router.register(r'users', views.UserViewSet)
-# router.register(r'students', views.StudentViewSet)
-# router.register(r'meetups', views.MeetupViewSet)
-# router.register(r'members', views.MemberViewSet)
-# router.register(r'locations', views.LocationViewSet)
-
+# SET (AUTOMATIC) API URLS HERE
+# router.register(r'locations', views.<SomeViewSet>)
 
 urlpatterns = patterns('',
     # Examples:
@@ -30,6 +25,8 @@ urlpatterns = patterns('',
     # REST API
     # url(r'^', include(router.urls)),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    url(r'^api-token-auth/', 'rest_framework.authtoken.views.obtain_auth_token'),
     url(r'^profile/$', views.profile),
+    url(r'^state/$', views.state),
     url(r'^$', views.api_root),
 )

@@ -4,6 +4,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from datetime import datetime
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
 
 
 # FIELDS:
@@ -11,6 +14,11 @@ from datetime import datetime
 
 # ForeignKey goes in *child*/many class (many-to-one relation)
 # parent = ForeignKey(Parent, relative_key="children")
+
+@receiver(post_save, sender=User)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
 
 class Student(models.Model):
 
@@ -26,11 +34,11 @@ class Student(models.Model):
     iAm = models.CharField(max_length=400, blank=True)
     iLike = models.CharField(max_length=400, blank=True)
     iWant = models.CharField(max_length=400, blank=True)
-    # dorm = models.CharField(max_length=30, blank=True) # uncomment after sync
-    # major = models.CharField(max_length=30, blank=True)
+    dorm = models.CharField(max_length=30, blank=True)
+    major = models.CharField(max_length=30, blank=True)
 
     # Rating System
-    hasRatedRecent = models.BooleanField(default=True)  # most recent rating
+    pendingRating = models.OneToOneField('Member', related_name='awaiting_raing',null=True, blank=True) # most recent encounter
     reliableMatch = models.FloatField(default=0)  # upvotes
     numReviews = models.IntegerField(default=0)  # total reviews (num meetings)
 
@@ -41,10 +49,9 @@ class Student(models.Model):
     # Matchmaking
     activeUntil = models.DateTimeField(default=datetime.now(),blank=True,null=True)  # waiting until
     isLooking = models.BooleanField(default=False)  # currently searching/waiting
-    pendingMatch = models.BooleanField(default=False)  # pending/completed match
 
     # Meetup instance
-    currentMembership = models.OneToOneField('Member', null=True)
+    currentMembership = models.OneToOneField('Member', null=True, blank=True)
     # currentMembership.meetup --> returns current Meetup instance
     # currentMembership.meetup.members.exclude(student=self) --> returns other student
     # currentMembership.student --> always equals self (preserved)
