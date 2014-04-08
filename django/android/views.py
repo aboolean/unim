@@ -81,8 +81,9 @@ def state(request):
         content['bothAccepted'] = student.currentMembership.accepted is not None and student.currentMembership.partner.accepted is not None
         content['partnerUnlocked'] = student.partnerUnlocked # change with location
         if content['partnerUnlocked'] == True:
-            content['name'] = member.partner.first_name + " " + member.partner.last_name
-            content['photo'] = member.partner.photo
+            partner = member.partner.owner
+            content['name'] = partner.first_name + " " + partner.last_name
+            content['photo'] = partner.student.photo
     return Response(content)
 
 @api_view(['POST'])
@@ -284,7 +285,7 @@ def release(request):
 
     content = dict()
     if student.currentMembership == None: # canceled by other user
-        content['name'] = ""
+        return Response(status=status.HTTP_400_BAD_REQUEST)
     else:
         student.pendingRating = student.currentMembership.partner
         student.currentMembership = None
@@ -319,7 +320,7 @@ def rate(request):
             partner.save()
             student.pendingRating = None
             student.save()
-    return Response(status=status.HTTP_200_OK) # avoid partner cancelled conflict
+    return Response({}, status=status.HTTP_200_OK) # avoid partner cancelled conflict
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
