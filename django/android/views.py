@@ -96,7 +96,7 @@ def match(request):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     # incorrect call; match already exists
-    if student.currentMembership != None or student.isLooking:
+    if student.currentMembership != None or student.isLooking == True:
         return Response(status=status.HTTP_400_BAD_REQUEST)
     # check to include appropriate fields
     REQUIRED_FIELDS = ['waitHours', 'waitMins', 'locLat', 'locLong', 'radius']
@@ -186,17 +186,19 @@ def cancel(request):
     except models.Student.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if student.currentMembership == None:
-        student.isLooking = False
-        student.activeUntil = None
-        student.partnerUnlocked = False
-        student.save()
-    else:
+    if student.currentMembership != None:
         partner = student.currentMembership.partner.owner.student
         partner.currentMembership = None
         partner.pendingRating = None
-        parter.partnerUnlocked = False
+        partner.partnerUnlocked = False
         partner.save()
+
+    student.isLooking = False
+    student.activeUntil = None
+    student.partnerUnlocked = False
+    student.currentMembership = None
+    student.save()
+        
 
     return Response({"success": True}, status=status.HTTP_200_OK)
 
@@ -260,11 +262,11 @@ def unlock(request):
 
     content = dict()
     # TODO: unlock before rate
-    member = student.currentMembership
+    partner = student.currentMembership.partner.owner
     student.partnerUnlocked = True
     student.save()
-    content['name'] = member.partner.first_name + " " + member.partner.last_name
-    content['photo'] = member.partner.photo
+    content['name'] = partner.first_name + " " + partner.last_name
+    content['photo'] = partner.student.photo
     return Response(content, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
@@ -284,10 +286,11 @@ def release(request):
     if student.currentMembership == None: # canceled by other user
         content['name'] = ""
     else:
-        student.pendingRating = student.currentMembership
+        student.pendingRating = student.currentMembership.partner
         student.currentMembership = None
         student.save()
-        content['name'] = student.pendingRating
+        partner = student.pendingRating.partner.owner
+        content['name'] = partner.first_name + " " + partner.last_name
 
     return Response(content, status=status.HTTP_200_OK)
 
