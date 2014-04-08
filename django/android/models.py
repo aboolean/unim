@@ -52,6 +52,7 @@ class Student(models.Model):
     activeUntil = models.DateTimeField(default=None,blank=True,null=True)  # waiting until
     radiusLooking = models.FloatField(default=0)
     isLooking = models.BooleanField(default=False)  # currently searching/waiting
+    partnerUnlocked = models.BooleanField(default=False)
 
     # Meetup instance
     currentMembership = models.OneToOneField('Member', null=True, blank=True)
@@ -82,7 +83,7 @@ class Meetup(models.Model):
         pass
 
     def __unicode__(self):
-        return ";".join([e.owner.username for e in self.members.all()])
+        return ", ".join([e.owner.username for e in self.members.all()]) + " -- " + str(self.matchTime)
 
 class Member(models.Model):
     """
@@ -99,10 +100,10 @@ class Member(models.Model):
     # Meetup Tacking
     accepted = models.NullBooleanField(default=None)
     responseTime = models.DateTimeField(blank=True,null=True)
-    receivedRating = models.IntegerField(default=None)
+    receivedRating = models.NullBooleanField(default=None)
 
     def __unicode__(self):
-        return "%s" % self.owner.username
+        return "%s" % self.owner.username + " -- " + str(self.meetup.matchTime)
 
 class Location(models.Model):
     """

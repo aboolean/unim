@@ -76,9 +76,13 @@ def state(request):
     # pending match
     content['pendingMatch'] = student.currentMembership != None
     if student.currentMembership != None:
+        member = student.currentMembership
         content['haveAccepted'] = student.currentMembership.accepted is not None # None or True
         content['bothAccepted'] = student.currentMembership.accepted is not None and student.currentMembership.partner.accepted is not None
-        content['partnerUnlocked'] = True # change with location
+        content['partnerUnlocked'] = student.partnerUnlocked # change with location
+        if content['partnerUnlocked'] == True:
+            content['name'] = member.partner.first_name + " " + member.partner.last_name
+            content['photo'] = member.partner.photo
     return Response(content)
 
 @api_view(['POST'])
@@ -91,10 +95,11 @@ def match(request):
     except models.Student.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if student.currentMembership != None:
+    # incorrect call; match already exists
+    if student.currentMembership != None or student.isLooking:
         return Response(status=status.HTTP_400_BAD_REQUEST)
     # check to include appropriate fields
-    REQUIRED_FIELDS = ['waitHours', 'waitMins', 'distance', 'locLat', 'locLong', 'radius']
+    REQUIRED_FIELDS = ['waitHours', 'waitMins', 'locLat', 'locLong', 'radius']
 
     if sum([1 if e in request.DATA else 0 for e in REQUIRED_FIELDS]) != len(REQUIRED_FIELDS):
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -108,7 +113,6 @@ def match(request):
     student.locLat = locLat
     student.locLong = locLong
     student.radiusLooking = radius
-    student.save()
 
     # get all students who are looking
     available = models.Student.objects.filter(isLooking=True)
@@ -116,6 +120,7 @@ def match(request):
     # remove expired results and find closest
     closest = (None, 0)
     for stu in available:
+        # remove expired
         if stu.activeUntil == None or stu.activeUntil < timezone.now():
             stu.activeUntil = None
             stu.isLooking = False
@@ -123,22 +128,77 @@ def match(request):
             continue
         
         dist = 69 * math.sqrt((stu.locLong - locLong)**2 + (stu.locLat - locLat) **2)
-        if dist <= student.radiusLooking and dist <= radius:
+        if dist <= stu.radiusLooking and dist <= radius:
             if closest[0] == None or closest[1] > dist:
                 closest = (stu, dist)
 
-    if closest[0] != None:
-        pass
+    otherStudent = closest[0]
+    if otherStudent != None:
+        content['matchFound'] = True
+        # stop looking
+        student.isLooking = False
+        student.activeUntil = None
+        otherStudent.isLooking = False
+        otherStudent.activeUntil = None
+        
+        # create meetup and memebrs
+        location = models.Location.objects.get(name="TestLoc")
+        meetup = models.Meetup(location=location)
+        meetup.save()
+        memberMe = models.Member(owner=student.owner, meetup=meetup)
+        memberPartner = models.Member(owner=otherStudent.owner, meetup=meetup)
+        memberMe.save()
+        memberPartner.save()
+
+        # join members
+        memberMe.partner = memberPartner
+        memberPartner.partner = memberMe
+
+        # link membership to student
+        student.currentMembership = memberMe
+        otherStudent.currentMembership = memberPartner
+
+        # return partner profile fields
+        serializer = serializers.ProfileSerializer(otherStudent, many=False)
+        for key, value in serializer.data.iteritems():
+            content[key] = value
+
+        memberMe.save()
+        memberPartner.save()
+        otherStudent.save()
+
     else:
-        content['notFound'] = True
+        content['matchFound'] = False
         student.isLooking = True
-        student.activeUntil = timezone.now() + timedelta(minutes=float(request.DATA['waitMins'], hours=float(request.DATA['waitHours'])))
+        student.activeUntil = timezone.now() + timedelta(minutes=float(request.DATA['waitMins']), hours=float(request.DATA['waitHours']))
+    
+    student.save()
 
     return Response(content)
 
 @api_view(['POST'])
 def cancel(request):
-    pass
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        student = models.Student.objects.get(owner=request.user)
+    except models.Student.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if student.currentMembership == None:
+        student.isLooking = False
+        student.activeUntil = None
+        student.partnerUnlocked = False
+        student.save()
+    else:
+        partner = student.currentMembership.partner.owner.student
+        partner.currentMembership = None
+        partner.pendingRating = None
+        parter.partnerUnlocked = False
+        partner.save()
+
+    return Response({"success": True}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def location(request):
@@ -162,6 +222,7 @@ def respond(request):
         partnerResponse = student.currentMembership.partner.accepted
         if response == True: # Accept
             student.currentMembership.accepted = True
+            student.currentMembership.responseTime = timezone.now()
             student.currentMembership.save()
             if partnerResponse == None: # waiting on other
                 content['matchFail'] = False
@@ -170,15 +231,65 @@ def respond(request):
                 content['matchFail'] = False
                 content['bothAccepted'] = True
         elif response == False: # Decline
+            otherStudent = student.currentMembership.partner.owner.student
+
             student.currentMembership.accepted = False
+            student.currentMembership.responseTime = timezone.now()
             student.currentMembership.save()
             student.currentMembership = None
             student.save()
+
+            otherStudent.currentMembership = None
+            otherStudent.save()
+
             content['matchFail'] = True
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         return Response(content)
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def unlock(request):
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        student = models.Student.objects.get(owner=request.user)
+    except models.Student.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    content = dict()
+    # TODO: unlock before rate
+    member = student.currentMembership
+    student.partnerUnlocked = True
+    student.save()
+    content['name'] = member.partner.first_name + " " + member.partner.last_name
+    content['photo'] = member.partner.photo
+    return Response(content, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def release(request):
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        student = models.Student.objects.get(owner=request.user)
+    except models.Student.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    student.partnerUnlocked = False
+    student.save()
+
+    content = dict()
+    if student.currentMembership == None: # canceled by other user
+        content['name'] = ""
+    else:
+        student.pendingRating = student.currentMembership
+        student.currentMembership = None
+        student.save()
+        content['name'] = student.pendingRating
+
+    return Response(content, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def rate(request):
@@ -205,7 +316,7 @@ def rate(request):
             partner.save()
             student.pendingRating = None
             student.save()
-            return Response(status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_200_OK) # avoid partner cancelled conflict
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
@@ -219,12 +330,9 @@ def partner(request):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     if student.currentMembership != None:
-        partner = student.currentMembership.partner
+        partner = student.currentMembership.partner.owner.student
         serializer = serializers.ProfileSerializer(partner, many=False)
-        content = serializer.data
-        if student.currentMembership.accepted and student.currentMembership.partner.accepted:
-            content['name'] = partner.owner.first_name + " " + partner.owner.last_name
-        return Response(content)
+        return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -240,4 +348,6 @@ def api_root(request, format=None):
         'rate': reverse(rate, request=request, format=format),
         'partner': reverse(partner, request=request, format=format),
         'location': reverse(location, request=request, format=format),
+        'unlock': reverse(unlock, request=request, format=format),
+        'release': reverse(release, request=request, format=format),
     })

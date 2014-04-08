@@ -34,5 +34,7 @@ urlpatterns = patterns('',
     url(r'^rate/$', views.rate),
     url(r'^partner/$', views.partner),
     url(r'^location/$', views.location),
+    url(r'^unlock/$', views.unlock),
+    url(r'^release/$', views.release),
     url(r'^$', views.api_root),
 )
