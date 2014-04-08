@@ -1,9 +1,11 @@
 RewriteEngine On
+
 RewriteCond %{HTTP:Authorization} ^(.+)
-#RewriteRule ^(.*)$ $1 [E=HTTP_AUTHORIZATION:%1,PT]
+# RewriteRule ^(.*)$ $1 [E=HTTP_AUTHORIZATION:%1,PT]
+RewriteRule ^.*$ - [e=HTTP_AUTHORIZATION:%1]
 
 RewriteRule ^$ index.fcgi/ [QSA,L]
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.fcgi/$1 [E=HTTP_AUTHORIZATION:%1,PT,QSA,L]
+RewriteRule ^(.*)$ index.fcgi/$1 [QSA,L]
