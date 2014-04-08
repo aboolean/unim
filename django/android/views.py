@@ -8,7 +8,9 @@ from rest_framework.decorators import action, link, api_view, permission_classes
 from android import serializers, models
 from android.permissions import IsOwnerOrAdmin
 from rest_framework.reverse import reverse
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone
+import math
 
 @api_view(['GET','POST'])
 def profile(request):
@@ -29,7 +31,13 @@ def profile(request):
         serializer = serializers.ProfileSerializer(student, data=request.DATA, many=False)
         if serializer.is_valid():
             serializer.save()
-            return Response(status=HTTP_200_OK)
+            # check if complete
+            student.isProfileComplete = True
+            for e in serializer.data.values():
+                if e == None or e == "":
+                    student.isProfileComplete = False
+            student.save()
+            return Response({},status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET'])
@@ -42,27 +50,98 @@ def state(request):
     except models.Student.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    serializer = serializers.StateSerializer(student, many=False)
-    content = serializer.data
+    content = dict()
+    content['isProfileComplete'] = student.isProfileComplete
+    now = timezone.now()
+    if student.isLooking == True:
+        if student.activeUntil == None or now > student.activeUntil:
+            student.activeUntil = None
+            student.isLooking = False
+            student.save()
+            content['isLooking'] = False
+        else:
+            content['isLooking'] = True
+            delta = student.activeUntil - now
+            content['activeFor'] = delta.total_seconds() / 3600 # hours
+    else:
+        student.activeUntil = None
+        student.save()
     # pending rating
     content['pendingRating'] = student.pendingRating != None # other member
     if content['pendingRating']:
         other = student.pendingRating.owner
         content['ratingName'] = other.first_name + " " + other.last_name
         content['ratingName'] = content['ratingName'][:30]
+
     # pending match
     content['pendingMatch'] = student.currentMembership != None
     if student.currentMembership != None:
         content['haveAccepted'] = student.currentMembership.accepted is not None # None or True
         content['bothAccepted'] = student.currentMembership.accepted is not None and student.currentMembership.partner.accepted is not None
+        content['partnerUnlocked'] = True # change with location
     return Response(content)
 
 @api_view(['POST'])
 def match(request):
-    pass
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        student = models.Student.objects.get(owner=request.user)
+    except models.Student.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if student.currentMembership != None:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+    # check to include appropriate fields
+    REQUIRED_FIELDS = ['waitHours', 'waitMins', 'distance', 'locLat', 'locLong', 'radius']
+
+    if sum([1 if e in request.DATA else 0 for e in REQUIRED_FIELDS]) != len(REQUIRED_FIELDS):
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+    
+    content = dict()
+
+    # update location
+    locLat = float(request.DATA['locLat'])
+    locLong = float(request.DATA['locLong'])
+    radius = float(request.DATA['radius'])
+    student.locLat = locLat
+    student.locLong = locLong
+    student.radiusLooking = radius
+    student.save()
+
+    # get all students who are looking
+    available = models.Student.objects.filter(isLooking=True)
+
+    # remove expired results and find closest
+    closest = (None, 0)
+    for stu in available:
+        if stu.activeUntil == None or stu.activeUntil < timezone.now():
+            stu.activeUntil = None
+            stu.isLooking = False
+            stu.save()
+            continue
+        
+        dist = 69 * math.sqrt((stu.locLong - locLong)**2 + (stu.locLat - locLat) **2)
+        if dist <= student.radiusLooking and dist <= radius:
+            if closest[0] == None or closest[1] > dist:
+                closest = (stu, dist)
+
+    if closest[0] != None:
+        pass
+    else:
+        content['notFound'] = True
+        student.isLooking = True
+        student.activeUntil = timezone.now() + timedelta(minutes=float(request.DATA['waitMins'], hours=float(request.DATA['waitHours'])))
+
+    return Response(content)
 
 @api_view(['POST'])
 def cancel(request):
+    pass
+
+@api_view(['POST'])
+def location(request):
     pass
 
 @api_view(['POST'])
@@ -160,4 +239,5 @@ def api_root(request, format=None):
         'respond': reverse(respond, request=request, format=format),
         'rate': reverse(rate, request=request, format=format),
         'partner': reverse(partner, request=request, format=format),
+        'location': reverse(location, request=request, format=format),
     })

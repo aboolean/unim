@@ -18,11 +18,3 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         model = models.Student
         fields = ('iAm', 'iLike', 'iWant', 'dorm', 'major')
-
-
-class StateSerializer(serializers.ModelSerializer):
-
-    class Meta:
-
-        model = models.Student
-        fields = ('isProfileComplete', 'activeUntil', 'isLooking')

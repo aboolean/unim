@@ -33,5 +33,6 @@ urlpatterns = patterns('',
     url(r'^respond/$', views.respond),
     url(r'^rate/$', views.rate),
     url(r'^partner/$', views.partner),
+    url(r'^location/$', views.location),
     url(r'^$', views.api_root),
 )

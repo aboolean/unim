@@ -49,7 +49,8 @@ class Student(models.Model):
     locLong = models.FloatField(default=999) # 999 is null flag
 
     # Matchmaking
-    activeUntil = models.DateTimeField(default=datetime.now(),blank=True,null=True)  # waiting until
+    activeUntil = models.DateTimeField(default=None,blank=True,null=True)  # waiting until
+    radiusLooking = models.FloatField(default=0)
     isLooking = models.BooleanField(default=False)  # currently searching/waiting
 
     # Meetup instance
