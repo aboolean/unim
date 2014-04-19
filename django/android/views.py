@@ -11,6 +11,7 @@ from rest_framework.reverse import reverse
 from datetime import datetime, timedelta
 from django.utils import timezone
 import math
+import account.views
 
 @api_view(['GET','POST'])
 def profile(request):
@@ -205,7 +206,21 @@ def cancel(request):
 
 @api_view(['POST'])
 def location(request):
-    pass
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        student = models.Student.objects.get(owner=request.user)
+    except models.Student.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    locLat = float(request.DATA['locLat'])
+    locLong = float(request.DATA['locLong'])
+    student.locLat = locLat
+    student.locLong = locLong
+    student.save()
+
+    return Response({}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def respond(request):

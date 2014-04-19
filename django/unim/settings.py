@@ -68,6 +68,10 @@ STATIC_ROOT = '/mit/aandre/web_scripts/unim/static'
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = '/static/'
 
+# ACCOUNT CREATION
+# ACCOUNT_EMAIL_UNIQUE = True
+# ACCOUNT_EMAIL_CONFIRMATION_REQUIRED = True
+
 # Additional locations of static files
 STATICFILES_DIRS = (
     # Put strings here, like "/home/html/static" or "C:/www/django/static".
@@ -86,6 +90,11 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'qxjay642q5@&amp;g!661$t!0@g8e#hk0vo*in(-skb$j)a=_ytca8'
 
+# TEMPLATE_CONTEXT_PROCESSORS = [
+#     'django.contrib.auth.context_processors.auth',
+#     "account.context_processors.account",
+# ]
+
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
@@ -99,6 +108,8 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    # "account.middleware.LocaleMiddleware",
+    # "account.middleware.TimezoneMiddleware",
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -130,6 +141,7 @@ INSTALLED_APPS = (
     'android',
     'rest_framework',
     'rest_framework.authtoken',
+    # 'account',
 )
 
 # A sample logging configuration. The only tangible logging
