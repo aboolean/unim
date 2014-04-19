@@ -85,6 +85,11 @@ def state(request):
             partner = member.partner.owner
             content['name'] = partner.first_name + " " + partner.last_name
             content['photo'] = partner.student.photo
+        # include meeting location details
+        if content['bothAccepted'] == True:
+            meetLoc = member.meetup.location
+            content['locName'] = meetLoc.name
+            content['locDesc'] = meetLoc.description
     return Response(content)
 
 @api_view(['POST'])
@@ -248,6 +253,9 @@ def respond(request):
             elif partnerResponse == True: # both accepted
                 content['matchFail'] = False
                 content['bothAccepted'] = True
+                meetLoc = student.currentMembership.meetup.location
+                content['locName'] = meetLoc.name
+                content['locDesc'] = meetLoc.description
         elif response == False: # Decline
             otherStudent = student.currentMembership.partner.owner.student
 
@@ -276,13 +284,37 @@ def unlock(request):
     except models.Student.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    content = dict()
-    # TODO: unlock before rate
-    partner = student.currentMembership.partner.owner
-    student.partnerUnlocked = True
+    if student.currentMembership == None: # canceled
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    # check to include appropriate fields
+    REQUIRED_FIELDS = ['locLat', 'locLong']
+
+    if sum([1 if e in request.DATA else 0 for e in REQUIRED_FIELDS]) != len(REQUIRED_FIELDS):
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    locLat = float(request.DATA['locLat'])
+    locLong = float(request.DATA['locLong'])
+    student.locLat = locLat
+    student.locLong = locLong
     student.save()
-    content['name'] = partner.first_name + " " + partner.last_name
-    content['photo'] = partner.student.photo
+
+    content = dict()
+
+    THRESHOLD_FT = 200.0 / 5280.0
+    # unclock if close enough
+    meetLat = currentMembership.meetup.location.locLat
+    meetLong = currentMembership.meetup.location.locLong
+    dist = 69.0 * math.sqrt((meetLong - locLong)**2 + (meetLat - locLat) **2)
+    if dist <= THRESHOLD_FT:
+        partner = student.currentMembership.partner.owner
+        student.partnerUnlocked = True
+        student.save()
+        content['unlockFail'] = False
+        content['name'] = partner.first_name + " " + partner.last_name
+        content['photo'] = partner.student.photo
+    else:
+        content['unlockFail'] = True
     return Response(content, status=status.HTTP_200_OK)
 
 @api_view(['POST'])

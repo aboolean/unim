@@ -124,5 +124,5 @@ class Location(models.Model):
     description = models.CharField(max_length=400)
 
     def __unicode__(self):
-        return "%s, %s" % (self.locLat, self.locLong)
+        return "%s -- %s, %s" % (self.name, self.locLat, self.locLong)
 
