@@ -12,6 +12,9 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 import math
 import account.views
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 @api_view(['GET','POST'])
 def profile(request):
@@ -122,11 +125,11 @@ def match(request):
     student.radiusLooking = radius
 
     # get all students who are looking
-    available = models.Student.objects.filter(isLooking=True)
+    availablePool = models.Student.objects.filter(isLooking=True)
 
-    # remove expired results and find closest
-    closest = (None, 0)
-    for stu in available:
+    # remove expired results and find available
+    available = (None, 0)
+    for stu in availablePool:
         # remove expired
         if stu.activeUntil == None or stu.activeUntil < timezone.now():
             stu.activeUntil = None
@@ -136,10 +139,10 @@ def match(request):
         
         dist = 69 * math.sqrt((stu.locLong - locLong)**2 + (stu.locLat - locLat) **2)
         if dist <= stu.radiusLooking and dist <= radius:
-            if closest[0] == None or closest[1] > dist:
-                closest = (stu, dist)
+            if available[0] == None or available[1] > dist:
+                available = (stu, dist)
 
-    otherStudent = closest[0]
+    otherStudent = available[0]
     if otherStudent != None:
         content['matchFound'] = True
         # stop looking
@@ -149,8 +152,19 @@ def match(request):
         otherStudent.activeUntil = None
         
         # create meetup and memebrs
-        location = models.Location.objects.get(name="TestLoc")
-        meetup = models.Meetup(location=location)
+        closest = (None, 1000000)
+        for loc in models.Location.objects.all():
+            distA = 69 * math.sqrt((loc.locLong - locLong)**2 + (loc.locLat - locLat) **2)
+            distB = 69 * math.sqrt((loc.locLong - otherStudent.locLong)**2 + (loc.locLat - otherStudent.locLat) **2)
+            dist = (distA + distB) * 0.5
+
+            if dist < closest[1]:
+                closest = (loc, dist)
+
+        if closest[0] != None:
+            meetup = models.Meetup(location=closest[0])
+        else:
+            meetup = models.Meetup(location=models.Location.objects.get("TestLoc"))
         meetup.save()
         memberMe = models.Member(owner=student.owner, meetup=meetup)
         memberPartner = models.Member(owner=otherStudent.owner, meetup=meetup)
@@ -301,10 +315,10 @@ def unlock(request):
 
     content = dict()
 
-    THRESHOLD_FT = 200.0 / 5280.0
+    THRESHOLD_FT = 400.0 / 5280.0
     # unclock if close enough
-    meetLat = currentMembership.meetup.location.locLat
-    meetLong = currentMembership.meetup.location.locLong
+    meetLat = student.currentMembership.meetup.location.locLat
+    meetLong = student.currentMembership.meetup.location.locLong
     dist = 69.0 * math.sqrt((meetLong - locLong)**2 + (meetLat - locLat) **2)
     if dist <= THRESHOLD_FT:
         partner = student.currentMembership.partner.owner
@@ -386,6 +400,29 @@ def partner(request):
         return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+def feedback(request):
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    if 'message' in request.DATA:
+        try:
+            msg = MIMEText(request.DATA['message'], 'plain')
+            msg['Subject'] = 'Unim - Feedback'
+            if request.user.email == "":
+                fromField = '"' + request.user.first_name + request.user.last_name + ' via Unim" <unim-feedback@mit.edu>'
+            else:
+                fromField = '"' + request.user.first_name + request.user.last_name + ' via Unim" <'+ request.user.email + '>'
+            msg['From'] = fromField
+            msg['To'] = '"Unim Feedback" <unim-feedback@mit.edu>'
+            #msg.add_header('reply-to', user.email)
+            s = smtplib.SMTP('localhost')
+            s.sendmail(fromField, '"Unim Feedback" <unim-feedback@mit.edu>', msg.as_string())
+            s.quit()
+        except User.DoesNotExist:
+            pass
+        return Response({},status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 # BROWSEABLE FUNCTIONS
 @api_view(('GET',))
@@ -401,4 +438,5 @@ def api_root(request, format=None):
         'location': reverse(location, request=request, format=format),
         'unlock': reverse(unlock, request=request, format=format),
         'release': reverse(release, request=request, format=format),
+        'feedback': reverse(feedback, request=feedback, format=format),
     })

@@ -37,5 +37,6 @@ urlpatterns = patterns('',
     url(r'^location/$', views.location),
     url(r'^unlock/$', views.unlock),
     url(r'^release/$', views.release),
+    url(r'^feedback/$', views.feedback),
     url(r'^$', views.api_root),
 )

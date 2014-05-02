@@ -17,4 +17,4 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
 
         model = models.Student
-        fields = ('iAm', 'iLike', 'iWant', 'dorm', 'major')
+        fields = ('iAm', 'iLike', 'iWant', 'dorm', 'major', 'photo')
