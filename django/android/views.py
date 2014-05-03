@@ -109,7 +109,7 @@ def match(request):
     if student.currentMembership != None or student.isLooking == True:
         return Response(status=status.HTTP_400_BAD_REQUEST)
     # check to include appropriate fields
-    REQUIRED_FIELDS = ['waitHours', 'waitMins', 'locLat', 'locLong', 'radius']
+    REQUIRED_FIELDS = ['waitHours', 'waitMins', 'locLat', 'locLong', 'radius', 'matchAgain']
 
     if sum([1 if e in request.DATA else 0 for e in REQUIRED_FIELDS]) != len(REQUIRED_FIELDS):
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -127,6 +127,10 @@ def match(request):
     # get all students who are looking
     availablePool = models.Student.objects.filter(isLooking=True)
 
+    # get all previous partners
+    previousMemberships = request.user.memberships.all()
+    previousPartners = [m.partner.owner.student for m in previousMemberships]
+
     # remove expired results and find available
     available = (None, 0)
     for stu in availablePool:
@@ -138,7 +142,10 @@ def match(request):
             continue
         
         dist = 69 * math.sqrt((stu.locLong - locLong)**2 + (stu.locLat - locLat) **2)
-        if dist <= stu.radiusLooking and dist <= radius:
+
+        again = False if request.DATA['matchAgain'] == True else (stu in previousPartners)
+
+        if dist <= stu.radiusLooking and dist <= radius and not again:
             if available[0] == None or available[1] > dist:
                 available = (stu, dist)
 
@@ -219,7 +226,6 @@ def cancel(request):
     student.partnerUnlocked = False
     student.currentMembership = None
     student.save()
-        
 
     return Response({"success": True}, status=status.HTTP_200_OK)
 
@@ -408,7 +414,42 @@ def feedback(request):
     if 'message' in request.DATA:
         try:
             msg = MIMEText(request.DATA['message'], 'plain')
-            msg['Subject'] = 'Unim - Feedback'
+            if 'subject' not in request.DATA:
+                msg['Subject'] = 'Unim - Feedback'
+            else:
+                msg['Subject'] = 'Unim - ' + str(request.DATA['subject'])
+            if request.user.email == "":
+                fromField = '"' + request.user.first_name + request.user.last_name + ' via Unim" <unim-feedback@mit.edu>'
+            else:
+                fromField = '"' + request.user.first_name + request.user.last_name + ' via Unim" <'+ request.user.email + '>'
+            msg['From'] = fromField
+            msg['To'] = '"Unim Feedback" <unim-feedback@mit.edu>'
+            #msg.add_header('reply-to', user.email)
+            s = smtplib.SMTP('localhost')
+            s.sendmail(fromField, '"Unim Feedback" <unim-feedback@mit.edu>', msg.as_string())
+            s.quit()
+        except User.DoesNotExist:
+            pass
+        return Response({},status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def decline_feedback(request):
+    if not request.user.is_authenticated():
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    if 'message' in request.DATA and currentMembership != None:
+        try:
+            body = request.DATA['message']
+            msg += '\n--------------\n'
+            otherStudent = student.currentMembership.partner.owner.student
+
+            serializer = serializers.ProfileSerializer(otherStudent, many=False)
+            for key, value in serializer.data.iteritems():
+                msg += str(key) + " : " + "\"" + str(value) + "\""
+
+            msg = MIMEText(body, 'plain')
+            msg['Subject'] = 'Unim - Decline'
             if request.user.email == "":
                 fromField = '"' + request.user.first_name + request.user.last_name + ' via Unim" <unim-feedback@mit.edu>'
             else:
@@ -425,7 +466,7 @@ def feedback(request):
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 # BROWSEABLE FUNCTIONS
-@api_view(('GET',))
+@api_view(['GET'])
 def api_root(request, format=None):
     return Response({
         'profile': reverse(profile, request=request, format=format),
@@ -438,5 +479,6 @@ def api_root(request, format=None):
         'location': reverse(location, request=request, format=format),
         'unlock': reverse(unlock, request=request, format=format),
         'release': reverse(release, request=request, format=format),
-        'feedback': reverse(feedback, request=feedback, format=format),
+        'feedback': reverse(feedback, request=request, format=format),
+        'decline_feedback': reverse(decline_feedback, request=request, format=format),
     })
