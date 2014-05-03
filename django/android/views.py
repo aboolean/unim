@@ -480,8 +480,5 @@ def api_root(request, format=None):
         'unlock': reverse(unlock, request=request, format=format),
         'release': reverse(release, request=request, format=format),
         'feedback': reverse(feedback, request=request, format=format),
-<<<<<<< HEAD
         'decline_feedback': reverse(decline_feedback, request=request, format=format),
-=======
->>>>>>> FETCH_HEAD
     })
