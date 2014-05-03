@@ -425,7 +425,7 @@ def feedback(request):
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 # BROWSEABLE FUNCTIONS
-@api_view(('GET',))
+@api_view(['GET'])
 def api_root(request, format=None):
     return Response({
         'profile': reverse(profile, request=request, format=format),
@@ -438,5 +438,5 @@ def api_root(request, format=None):
         'location': reverse(location, request=request, format=format),
         'unlock': reverse(unlock, request=request, format=format),
         'release': reverse(release, request=request, format=format),
-        'feedback': reverse(feedback, request=feedback, format=format),
+        'feedback': reverse(feedback, request=request, format=format),
     })
