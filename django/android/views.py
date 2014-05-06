@@ -15,6 +15,7 @@ import account.views
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import json, httplib
 
 @api_view(['GET','POST'])
 def profile(request):
@@ -195,6 +196,8 @@ def match(request):
         memberPartner.save()
         otherStudent.save()
 
+        send_push(otherStudent, "A match has been found, awaiting your response.")
+
     else:
         content['matchFound'] = False
         student.isLooking = True
@@ -215,6 +218,10 @@ def cancel(request):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     if student.currentMembership != None:
+        # send push notification
+        otherStudent = student.currentMembership.partner.owner.student
+        send_push(otherStudent, "Your partner has canceled the meeting.")
+
         partner = student.currentMembership.partner.owner.student
         partner.currentMembership = None
         partner.pendingRating = None
@@ -260,6 +267,9 @@ def respond(request):
     if 'response' in request.DATA:
         if student.currentMembership == None: # partner decline
             return Response({'matchFail':True})
+
+        otherStudent = student.currentMembership.partner.owner.student
+
         content = dict()
         response = request.DATA['response']
         partnerResponse = student.currentMembership.partner.accepted
@@ -271,13 +281,15 @@ def respond(request):
                 content['matchFail'] = False
                 content['bothAccepted'] = False
             elif partnerResponse == True: # both accepted
+                send_push(otherStudent, "Your partner has agreed to meet.")
+
                 content['matchFail'] = False
                 content['bothAccepted'] = True
                 meetLoc = student.currentMembership.meetup.location
                 content['locName'] = meetLoc.name
                 content['locDesc'] = meetLoc.description
         elif response == False: # Decline
-            otherStudent = student.currentMembership.partner.owner.student
+            send_push(otherStudent, "Your partner has declined to meet.")
 
             student.currentMembership.accepted = False
             student.currentMembership.responseTime = timezone.now()
@@ -326,14 +338,17 @@ def unlock(request):
     meetLat = student.currentMembership.meetup.location.locLat
     meetLong = student.currentMembership.meetup.location.locLong
     dist = 69.0 * math.sqrt((meetLong - locLong)**2 + (meetLat - locLat) **2)
-    if dist <= THRESHOLD_FT:
+    if dist <= THRESHOLD_FT: # arrived and unlocked
         partner = student.currentMembership.partner.owner
+        
+        send_push(partner.student, "Your partner has arrived at the meeting location.")
+
         student.partnerUnlocked = True
         student.save()
         content['unlockFail'] = False
         content['name'] = partner.first_name + " " + partner.last_name
         content['photo'] = partner.student.photo
-    else:
+    else: # too far, try again
         content['unlockFail'] = True
     return Response(content, status=status.HTTP_200_OK)
 
@@ -438,15 +453,20 @@ def decline_feedback(request):
     if not request.user.is_authenticated():
         return Response(status=status.HTTP_403_FORBIDDEN)
 
-    if 'message' in request.DATA and currentMembership != None:
+    try:
+        student = models.Student.objects.get(owner=request.user)
+    except models.Student.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if 'message' in request.DATA and student.currentMembership != None:
         try:
             body = request.DATA['message']
-            msg += '\n--------------\n'
+            body += '\n--------------\n'
             otherStudent = student.currentMembership.partner.owner.student
 
             serializer = serializers.ProfileSerializer(otherStudent, many=False)
             for key, value in serializer.data.iteritems():
-                msg += str(key) + " : " + "\"" + str(value) + "\""
+                body += str(key) + " : " + "\"" + str(value) + "\"\n"
 
             msg = MIMEText(body, 'plain')
             msg['Subject'] = 'Unim - Decline'
@@ -482,3 +502,17 @@ def api_root(request, format=None):
         'feedback': reverse(feedback, request=request, format=format),
         'decline_feedback': reverse(decline_feedback, request=request, format=format),
     })
+
+def send_push(recipientStudent, message):
+    connection = httplib.HTTPSConnection('api.parse.com', 443)
+    connection.connect()
+    connection.request('POST', '/1/push', json.dumps({
+        "channels": ["user_" + str(recipientStudent.owner.username)],
+        "data": {
+            "alert" : str(message)}
+        }), {
+            "X-Parse-Application-Id": "O7l5N4z6P1mLiAwOVrZb00AkHTe0f46SoLWDwp3P",
+            "X-Parse-REST-API-Key": "OjvLFyMFZIAN0bihsdmKLyZJ5PSm9XqEclExkpeO",
+            "Content-Type": "application/json"
+        })
+
